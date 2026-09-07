@@ -5,7 +5,9 @@
   "scripts": {
     "build": "node ace build --production",
     "start": "node server.js",
-    "dev": "node ace serve --watch"
+    "dev": "node ace serve --watch",
+    "test": "node --test tests/*.test.cjs",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^3.0.6",
