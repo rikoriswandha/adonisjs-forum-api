@@ -7,34 +7,25 @@ export default class PostsController {
     return posts;
   }
 
-  public async show({ request, params }: HttpContextContract) {
-    try {
-      const post = await Post.find(params.id);
-      if (post) {
-        await post.preload("user");
-        await post.preload("forum");
-        return post;
-      }
-    } catch (error) {
-      console.log(error);
-    }
+  public async show({ params }: HttpContextContract) {
+    const post = await Post.findOrFail(params.id);
+    await post.preload("user");
+    await post.preload("forum");
+    return post;
   }
 
   public async update({ auth, request, params }: HttpContextContract) {
-    const post = await Post.find(params.id);
-
-    if (post) {
-      post.title = request.input("title");
-      post.content = request.input("content");
-      if (await post.save()) {
-        await post.preload("user");
-        await post.preload("forum");
-        return post;
-      }
-      return; // 422
-    }
-
-    return; // 401
+    const user = await auth.authenticate();
+    const post = await Post.query()
+      .where("user_id", user.id)
+      .where("id", params.id)
+      .firstOrFail();
+    post.title = request.input("title");
+    post.content = request.input("content");
+    await post.save();
+    await post.preload("user");
+    await post.preload("forum");
+    return post;
   }
 
   public async store({ auth, request }: HttpContextContract) {
@@ -47,17 +38,13 @@ export default class PostsController {
     return post;
   }
 
-  public async destroy({
-    response,
-    auth,
-
-    params,
-  }: HttpContextContract) {
+  public async destroy({ response, auth, params }: HttpContextContract) {
     const user = await auth.authenticate();
     const post = await Post.query()
       .where("user_id", user.id)
       .where("id", params.id)
-      .delete();
-    return response.redirect("/dashboard");
+      .firstOrFail();
+    await post.delete();
+    return response.noContent();
   }
 }
