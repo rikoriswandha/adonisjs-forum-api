@@ -12,7 +12,7 @@ export default class AuthController {
         expiresIn: "10 days",
       });
 
-      Logger.info({ user: auth.user.id }, "User login successfully");
+      Logger.info({ user: auth.use("api").user?.id }, "User login successfully");
       return token.toJSON();
     } catch (error) {
       Logger.error({ err: new Error(error) }, "User login failed");
