@@ -50,7 +50,6 @@ const bodyParserConfig: BodyParserConfig = {
   |
   */
   form: {
-    convertEmptyStringsToNull: false,
     encoding: 'utf-8',
     limit: '1mb',
     queryString: {},
@@ -88,7 +87,6 @@ const bodyParserConfig: BodyParserConfig = {
   |
   */
   multipart: {
-    convertEmptyStringsToNull: false,
     /*
     |--------------------------------------------------------------------------
     | Auto process

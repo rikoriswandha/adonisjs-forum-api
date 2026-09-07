@@ -2,7 +2,7 @@ import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import Post from "App/Models/Post";
 
 export default class PostsController {
-  public async index({ request }: HttpContextContract) {
+  public async index() {
     const posts = await Post.query().preload("user").preload("forum");
     return posts;
   }
