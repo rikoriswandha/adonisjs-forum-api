@@ -19,57 +19,29 @@ export default class ForumsController {
   }
 
   public async indexWithoutCache({}: HttpContextContract) {
-    await Cache.flush();
     return await Forum.query().preload("user").preload("posts");
   }
 
   public async show({ params }: HttpContextContract) {
-    try {
-      const forum = await Cache.remember(
-        "forum_id_" + params.id,
-        60,
-        async function () {
-          return await Forum.find(params.id);
-        }
-      );
-
-      if (forum) {
-        await forum.preload("user");
-        await forum.preload("posts");
-        Logger.info({ ForumId: params.id }, `Forum retrieved successfully`);
-        return forum;
-      }
-    } catch (error) {
-      Logger.error({ err: new Error(error) }, "Get Single Forum");
-      console.log(error);
-    }
+    const forum = await Forum.findOrFail(params.id);
+    await forum.preload("user");
+    await forum.preload("posts");
+    return forum;
   }
 
-  public async update({ request, params }: HttpContextContract) {
-    const forum = await Cache.remember(
-      "forum_id_" + params.id,
-      60,
-      async function () {
-        return await Forum.find(params.id);
-      }
-    );
-    Logger.info({ ForumId: params.id }, `Forum retrieved successfully`);
-
-    if (forum) {
-      forum.title = request.input("title");
-      forum.description = request.input("description");
-      if (await forum.save()) {
-        await forum.preload("user");
-        await forum.preload("posts");
-        Logger.info({ ForumId: params.id }, `Forum updated successfully`);
-        await Cache.update("forum_id_" + params.id, forum, 60);
-        return forum;
-      }
-      Logger.error({ ForumId: params.id }, `Forum failed to update`);
-      return; // 422
-    }
-    Logger.error({ ForumId: params.id }, `Forum not found`);
-    return; // 401
+  public async update({ auth, request, params }: HttpContextContract) {
+    const user = await auth.authenticate();
+    const forum = await Forum.query()
+      .where("user_id", user.id)
+      .where("id", params.id)
+      .firstOrFail();
+    forum.title = request.input("title");
+    forum.description = request.input("description");
+    await forum.save();
+    await Cache.delete("forum_id_" + params.id);
+    await forum.preload("user");
+    await forum.preload("posts");
+    return forum;
   }
 
   public async store({ auth, request }: HttpContextContract) {
@@ -87,15 +59,14 @@ export default class ForumsController {
     return;
   }
 
-  public async destroy({ auth, params }: HttpContextContract) {
+  public async destroy({ auth, params, response }: HttpContextContract) {
     const user = await auth.authenticate();
-    Logger.info({ UserId: user.id }, `User auth successfully`);
     const forum = await Forum.query()
       .where("user_id", user.id)
       .where("id", params.id)
-      .delete();
-    Logger.info({ UserID: user.id }, `Forum deleted: ${forum}`);
+      .firstOrFail();
+    await forum.delete();
     await Cache.delete("forum_id_" + params.id);
-    return 404;
+    return response.noContent();
   }
 }
